@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+.prose-custom p { margin-bottom: 0.5rem; }
+.prose-custom ul { margin-left: 1rem; list-style: disc; }
+.prose-custom ol { margin-left: 1rem; list-style: decimal; }
+.prose-custom code { background: #1e293b; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
