@@ -7,7 +7,7 @@
 - **Frontend:** React.js, Vite, Tailwind CSS, React Markdown
 - **AI:** Retrieval-Augmented Generation (RAG) + Gemini (gemini-2.5-flash)
 
-## 📐 Architecture (Talk about this in interviews!)
+## 📐 Architecture 
 ```
 PDF Upload → Text Extraction (pypdf) → Chunking (LangChain RecursiveCharacterTextSplitter)
     → Embedding (SentenceTransformer: all-MiniLM-L6-v2) → Vector Store (ChromaDB)
