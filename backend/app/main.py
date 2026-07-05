@@ -10,7 +10,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://technical-manual-intelligence-54nj.vercel.app",
+    ],
+    allow_origin_regex=r"https://technical-manual-intelligence.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,9 +24,11 @@ app.add_middleware(
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 
+
 @app.get("/")
 def root():
     return {"message": "Technical Manual Intelligence System API", "status": "running"}
+
 
 @app.get("/health")
 def health():
