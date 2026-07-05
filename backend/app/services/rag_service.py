@@ -7,13 +7,32 @@ from google import genai
 from pypdf import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 from app.core.config import settings
 
+# --- Lightweight Gemini-based embedding function (replaces SentenceTransformer) ---
+class GeminiEmbeddingFunction:
+    def __init__(self, api_key: str, model_name: str = "models/text-embedding-004"):
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
+
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        embeddings = []
+        for text in input:
+            result = self.client.models.embed_content(
+                model=self.model_name,
+                contents=text
+            )
+            embeddings.append(result.embeddings[0].values)
+        return embeddings
+
+    def name(self) -> str:
+        return "gemini_embedding_function"
+
+
 # Initialize ChromaDB
 client = chromadb.PersistentClient(path=settings.CHROMA_DIR)
-embedding_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+embedding_fn = GeminiEmbeddingFunction(api_key=settings.GEMINI_API_KEY)
 
 # Track uploaded documents in memory
 uploaded_docs: Dict[str, Dict] = {}
@@ -38,13 +57,11 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 def process_and_index_document(file_path: str, doc_id: str, filename: str) -> Dict[str, Any]:
     """Process PDF and index into ChromaDB."""
-    # Extract text
     raw_text = extract_text_from_pdf(file_path)
-    
+
     if not raw_text.strip():
         raise ValueError("No text could be extracted from the PDF.")
 
-    # Split into chunks
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.CHUNK_SIZE,
         chunk_overlap=settings.CHUNK_OVERLAP,
@@ -52,17 +69,15 @@ def process_and_index_document(file_path: str, doc_id: str, filename: str) -> Di
     )
     chunks = splitter.split_text(raw_text)
 
-    # Index into ChromaDB
     collection = get_or_create_collection(f"doc_{doc_id}")
     ids = [f"{doc_id}_chunk_{i}" for i in range(len(chunks))]
-    
+
     collection.add(
         documents=chunks,
         ids=ids,
         metadatas=[{"source": filename, "chunk_index": i} for i in range(len(chunks))]
     )
 
-    # Store metadata
     uploaded_docs[doc_id] = {
         "doc_id": doc_id,
         "filename": filename,
@@ -83,10 +98,9 @@ def retrieve_relevant_chunks(doc_id: str, query: str, k: int = None) -> List[str
 
 
 def answer_question(doc_id: str, question: str, chat_history: List[Dict] = None) -> Dict[str, Any]:
-    """Answer a question using RAG + Claude."""
-    # Retrieve relevant context
+    """Answer a question using RAG + Gemini."""
     chunks = retrieve_relevant_chunks(doc_id, question)
-    
+
     if not chunks:
         return {
             "answer": "I couldn't find relevant information in the document to answer your question.",
@@ -95,8 +109,7 @@ def answer_question(doc_id: str, question: str, chat_history: List[Dict] = None)
         }
 
     context = "\n\n---\n\n".join(chunks)
-    
-    # Build system prompt
+
     system_prompt = """You are an expert technical assistant that answers questions about technical manuals and documents.
     
 Your task:
@@ -106,16 +119,14 @@ Your task:
 - Reference specific parts of the manual when relevant
 - Format your response clearly with bullet points or numbered lists when appropriate"""
 
-    # Build chat history as plain text (Gemini's simple text-prompt style)
     history_text = ""
     if chat_history:
-        for msg in chat_history[-6:]:  # Last 3 exchanges
+        for msg in chat_history[-6:]:
             role_label = "User" if msg["role"] == "user" else "Assistant"
             history_text += f"{role_label}: {msg['content']}\n\n"
 
     history_block = f"Previous conversation:\n{history_text}" if history_text else ""
 
-    # Build the full prompt (Gemini doesn't require a separate system param for this simple case)
     full_prompt = f"""{system_prompt}
 
 {history_block}
@@ -126,7 +137,6 @@ Question: {question}
 
 Please answer based on the above context."""
 
-    # Call Gemini API
     gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
     response = gemini_client.models.generate_content(
         model="gemini-2.5-flash",
@@ -135,14 +145,13 @@ Please answer based on the above context."""
 
     return {
         "answer": response.text,
-        "sources": chunks[:3],  # Return top 3 chunks as sources
+        "sources": chunks[:3],
         "context_used": len(chunks)
     }
 
 
 def list_documents() -> List[Dict]:
     """List all uploaded documents."""
-    # Also check ChromaDB for persisted collections
     collections = client.list_collections()
     result = []
     for col in collections:
