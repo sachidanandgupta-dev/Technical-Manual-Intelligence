@@ -1,4 +1,4 @@
-# 📚 Technical Manual Intelligence System  is a
+# 📚 Technical Manual Intelligence System  is 
 
 > RAG-powered document Q&A chatbot for technical PDF manuals
 
