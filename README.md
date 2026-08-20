@@ -1,4 +1,4 @@
-re # 📚 Technical Manual Intelligence System
+# 📚 Technical Manual Intelligence System
 
 > RAG-powered document Q&A chatbot for technical PDF manuals
 
